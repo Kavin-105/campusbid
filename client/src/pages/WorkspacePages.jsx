@@ -217,8 +217,9 @@ function SalesSummary() {
 
 function SalesDetail({ detail, error }) {
   const [proposal, setProposal] = useState(''); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(error); const [handoverStatus, setHandoverStatus] = useState(detail?.handover?.status);
+  const [auctionStatus, setAuctionStatus] = useState(detail?.auction?.status || detail?.item?.status || detail?.status);
   const [scheduledAt, setScheduledAt] = useState(detail?.handover?.scheduledAt || '');
-  useEffect(() => { setHandoverStatus(detail?.handover?.status); setScheduledAt(detail?.handover?.scheduledAt || ''); }, [detail]);
+  useEffect(() => { setHandoverStatus(detail?.handover?.status); setAuctionStatus(detail?.auction?.status || detail?.item?.status || detail?.status); setScheduledAt(detail?.handover?.scheduledAt || ''); }, [detail]);
   const auction = detail?.auction || detail?.item || detail;
   if (message && !detail) return <div className="page-state page-state-error">{message}</div>;
   if (!detail) return <div className="page-state" role="status">Loading sale details…</div>;
@@ -228,11 +229,12 @@ function SalesDetail({ detail, error }) {
     try {
       const { data } = await api.post(path, body);
       setHandoverStatus(data.handover?.status || handoverStatus);
+      if (data.handover?.status === 'completed') setAuctionStatus('sold');
       setMessage('Handover updated successfully.');
     } catch (err) { setMessage(err.response?.data?.message || 'Could not update the handover.'); }
     finally { setBusy(false); }
   };
-  return <div className="space-y-6"><Link to="/seller/sales-history" className="back-link">← Back to sales history</Link><PageTitle eyebrow="SALE DETAIL" title={auction?.title || 'Sale details'} copy={`Outcome: ${auction?.status || auction?.outcome || '—'} · Final price: ${formatPrice(auction?.approvedFinalPrice || auction?.currentPrice)}`} /><section className="detail-panel p-6"><h2 className="text-lg font-bold">Public bid history</h2>{(detail.bids || []).length ? <div className="mt-4 divide-y">{detail.bids.map((b) => <p key={b._id} className="py-3 text-sm">{b.bidder?.name || 'Student'} bid <strong>{formatPrice(b.amount)}</strong> · {dateText(b.createdAt)}</p>)}</div> : <p className="mt-3 text-slate-600">No bids were recorded.</p>}</section><section className="detail-panel p-6"><h2 className="text-lg font-bold">Handover schedule</h2>{handover ? <HandoverCard handover={{ ...handover, status: handoverStatus || handover.status, scheduledAt }} /> : <p className="mt-2 text-slate-600">A handover will appear when the winner is approved.</p>}<form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setMessage(''); try { const scheduled = new Date(proposal).toISOString(); await api.patch(`/handovers/${handover?._id}/schedule`, { scheduledAt: scheduled }); setScheduledAt(scheduled); setHandoverStatus('scheduled'); setMessage('Handover time proposal sent.'); } catch (err) { setMessage(err.response?.data?.message || 'Could not propose a time.'); } finally { setBusy(false); } }}><label className="sr-only" htmlFor="handover-time">Propose handover time</label><input id="handover-time" className="form-input" type="datetime-local" value={proposal} onChange={(e) => setProposal(e.target.value)} required /><button className="primary-btn" disabled={busy || !handover}>{busy ? 'Sending…' : 'Propose handover time'}</button></form>{handover && ['pending', 'scheduled'].includes(handoverStatus || handover.status) && <div className="mt-4 flex flex-wrap gap-2"><button className="secondary-btn" disabled={busy || (handoverStatus || handover.status) !== 'scheduled'} onClick={() => handoverAction(`/handovers/${handover._id}/confirm`)}>Confirm handover</button><button className="secondary-btn text-rose-700" disabled={busy} onClick={() => { const reason = window.prompt('Briefly describe the failed pickup'); if (reason?.trim()) handoverAction(`/handovers/${handover._id}/report-failure`, { reason: reason.trim() }); }}>Report failed pickup</button></div>}{message && <p role="status" className="mt-3 text-sm text-slate-600">{message}</p>}</section></div>;
+  return <div className="space-y-6"><Link to="/seller/sales-history" className="back-link">← Back to sales history</Link><PageTitle eyebrow="SALE DETAIL" title={auction?.title || 'Sale details'} copy={`Outcome: ${auctionStatus || auction?.outcome || '—'} · Final price: ${formatPrice(auction?.approvedFinalPrice || auction?.currentPrice)}`} /><section className="detail-panel p-6"><h2 className="text-lg font-bold">Public bid history</h2>{(detail.bids || []).length ? <div className="mt-4 divide-y">{detail.bids.map((b) => <p key={b._id} className="py-3 text-sm">{b.bidder?.name || 'Student'} bid <strong>{formatPrice(b.amount)}</strong> · {dateText(b.createdAt)}</p>)}</div> : <p className="mt-3 text-slate-600">No bids were recorded.</p>}</section><section className="detail-panel p-6"><h2 className="text-lg font-bold">Handover schedule</h2>{handover ? <HandoverCard handover={{ ...handover, status: handoverStatus || handover.status, scheduledAt }} /> : <p className="mt-2 text-slate-600">A handover will appear when the winner is approved.</p>}<form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setMessage(''); try { const scheduled = new Date(proposal).toISOString(); await api.patch(`/handovers/${handover?._id}/schedule`, { scheduledAt: scheduled }); setScheduledAt(scheduled); setHandoverStatus('scheduled'); setMessage('Handover time proposal sent.'); } catch (err) { setMessage(err.response?.data?.message || 'Could not propose a time.'); } finally { setBusy(false); } }}><label className="sr-only" htmlFor="handover-time">Propose handover time</label><input id="handover-time" className="form-input" type="datetime-local" value={proposal} onChange={(e) => setProposal(e.target.value)} required /><button className="primary-btn" disabled={busy || !handover}>{busy ? 'Sending…' : 'Propose handover time'}</button></form>{handover && ['pending', 'scheduled'].includes(handoverStatus || handover.status) && <div className="mt-4 flex flex-wrap gap-2"><button className="secondary-btn" disabled={busy || (handoverStatus || handover.status) !== 'scheduled'} onClick={() => handoverAction(`/handovers/${handover._id}/confirm`)}>Confirm handover</button><button className="secondary-btn text-rose-700" disabled={busy} onClick={() => { const reason = window.prompt('Briefly describe the failed pickup'); if (reason?.trim()) handoverAction(`/handovers/${handover._id}/report-failure`, { reason: reason.trim() }); }}>Report failed pickup</button></div>}{message && <p role="status" className="mt-3 text-sm text-slate-600">{message}</p>}</section></div>;
 }
 
 function HandoverCard({ handover, linkToDetails = false }) {
@@ -261,7 +263,51 @@ export function PurchasesPage() {
 function PurchaseHandover({ handover, reload }) {
   const [error, setError] = useState(''); const [time, setTime] = useState(''); const [busy, setBusy] = useState(false);
   const run = async (path, method = 'post', data) => { setBusy(true); setError(''); try { await api[method](path, data); await reload(); } catch (e) { setError(e.response?.data?.message || 'Could not update this handover.'); } finally { setBusy(false); } };
-  return <article className="detail-panel p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold">{handover.auction?.title || handover.title || 'Purchase handover'}</h2><p className="mt-1 text-sm text-slate-600">Seller: {handover.seller?.name || 'Campus seller'} · {handover.status}</p><p className="text-sm text-slate-500">Scheduled: {dateText(handover.scheduledAt)}</p></div><span className={statusClass(handover.status)}>{handover.status}</span></div><div className="mt-4 flex flex-wrap gap-2"><button disabled={busy || handover.status !== 'scheduled'} className="primary-btn" onClick={() => run(`/handovers/${handover._id}/confirm`)}>Confirm handover</button><button disabled={busy || !['pending', 'scheduled'].includes(handover.status)} className="secondary-btn text-rose-700" onClick={() => { const reason = window.prompt('Briefly describe the failed pickup'); if (reason?.trim()) run(`/handovers/${handover._id}/report-failure`, 'post', { reason: reason.trim() }); }}>Report failed pickup</button></div><form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); run(`/handovers/${handover._id}/schedule`, 'patch', { scheduledAt: new Date(time).toISOString() }); }}><label className="sr-only" htmlFor={`time-${handover._id}`}>Propose a new time</label><input id={`time-${handover._id}`} className="form-input" type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} required /><button className="secondary-btn" disabled={busy || !['pending', 'scheduled'].includes(handover.status)}>Propose new time</button></form>{error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}</article>;
+  const buyerConfirmed = Boolean(handover.buyerConfirmedAt);
+  const sellerConfirmed = Boolean(handover.sellerConfirmedAt);
+  const canConfirm = handover.status === 'scheduled' && !buyerConfirmed;
+  return <article className="detail-panel p-5">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 className="font-bold">{handover.auction?.title || handover.title || 'Purchase handover'}</h2>
+        <p className="mt-1 text-sm text-slate-600">Seller: {handover.seller?.name || 'Campus seller'} · {handover.status}</p>
+        <p className="text-sm text-slate-500">Scheduled: {dateText(handover.scheduledAt)}</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {handover.auction?.status && <span className={statusClass(handover.auction.status)}>{handover.auction.status}</span>}
+        <span className={statusClass(handover.status)}>{handover.status}</span>
+      </div>
+    </div>
+    {['pending', 'scheduled'].includes(handover.status) && <div className="mt-3 space-y-1 text-sm text-slate-600" aria-live="polite">
+      <p>Buyer confirmation: {buyerConfirmed ? 'Confirmed' : 'Waiting'}</p>
+      <p>Seller confirmation: {sellerConfirmed ? 'Confirmed' : 'Waiting'}</p>
+      {handover.status === 'pending'
+        ? <p className="text-slate-700">A handover time must be scheduled before either person can confirm. Propose a time below or wait for the seller.</p>
+        : buyerConfirmed
+          ? <p className="text-slate-700">You confirmed the handover. The sale completes after the seller confirms too.</p>
+          : sellerConfirmed
+            ? <p className="text-slate-700">The seller confirmed. Confirm after the handover is complete to finish the sale.</p>
+            : <p className="text-slate-700">Both people must confirm after the handover is complete for the sale to finish.</p>}
+    </div>}
+    {['pending', 'scheduled'].includes(handover.status) ? <>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button disabled={busy || !canConfirm} className="primary-btn" onClick={() => run(`/handovers/${handover._id}/confirm`)}>
+          {buyerConfirmed ? 'You confirmed' : 'Confirm handover'}
+        </button>
+        <button disabled={busy} className="secondary-btn text-rose-700" onClick={() => { const reason = window.prompt('Briefly describe the failed pickup'); if (reason?.trim()) run(`/handovers/${handover._id}/report-failure`, 'post', { reason: reason.trim() }); }}>Report failed pickup</button>
+      </div>
+      <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); run(`/handovers/${handover._id}/schedule`, 'patch', { scheduledAt: new Date(time).toISOString() }); }}>
+        <label className="sr-only" htmlFor={`time-${handover._id}`}>Propose a new time</label>
+        <input id={`time-${handover._id}`} className="form-input" type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} required />
+        <button className="secondary-btn" disabled={busy}>Propose new time</button>
+      </form>
+    </> : handover.status === 'completed'
+      ? <p className="mt-4 text-sm font-medium text-emerald-800">Handover complete. Both people have confirmed.</p>
+      : handover.status === 'failed'
+        ? <p className="mt-4 text-sm text-rose-700">Pickup reported as failed{handover.failureReason ? `: ${handover.failureReason}` : '.'}</p>
+        : null}
+    {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}
+  </article>;
 }
 
 export function ProfilePage() {

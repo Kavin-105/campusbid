@@ -98,7 +98,7 @@ const confirmHandover = async (req, res, next) => {
     if (String(req.user._id) === String(handover.buyer)) handover.buyerConfirmedAt = new Date();
     else handover.sellerConfirmedAt = new Date();
     await handover.save();
-    await completeHandoverIfConfirmed(handover);
+    await completeHandoverIfConfirmed(handover, req.app.locals.io);
     const otherParty = String(req.user._id) === String(handover.buyer) ? handover.seller : handover.buyer;
     await createNotification(otherParty, handover.auction, 'handover', 'The other participant confirmed the campus handover.');
     res.json({ handover });

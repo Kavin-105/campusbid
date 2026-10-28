@@ -271,7 +271,7 @@ const finalizeExpiredAuctions = async (io) => {
   return expiredAuctions.length;
 };
 
-const completeHandoverIfConfirmed = async (handover) => {
+const completeHandoverIfConfirmed = async (handover, io) => {
   if (handover.buyerConfirmedAt && handover.sellerConfirmedAt && handover.status !== 'completed') {
     handover.status = 'completed';
     handover.completedAt = new Date();
@@ -281,6 +281,7 @@ const completeHandoverIfConfirmed = async (handover) => {
       { $set: { status: 'sold', outcome: 'won', completedAt: handover.completedAt } },
       { new: true }
     );
+    if (auction) broadcastAuction(io, auction);
     await createNotification(handover.buyer, handover.auction, 'handover', `Your purchase of ${auction.title} is complete.`);
     await createNotification(handover.seller, handover.auction, 'handover', `The sale of ${auction.title} is complete.`);
   }
