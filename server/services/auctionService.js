@@ -25,6 +25,11 @@ const broadcastAuction = (io, auction) => {
 
 const acceptBid = async ({ auction, bidder, amount, bidType = 'manual', autoBidRule = null, io }) => {
   const now = new Date();
+  if (auction.currentLeader && String(auction.currentLeader._id || auction.currentLeader) === String(bidder._id)) {
+    const error = new Error('You are currently leading this auction. Wait until another buyer places a bid before bidding again.');
+    error.statusCode = 409;
+    throw error;
+  }
   const minimumAmount = auction.bidCount === 0
     ? auction.startingPrice
     : auction.currentPrice + auction.minimumBidIncrement;
