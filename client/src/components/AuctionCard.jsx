@@ -9,17 +9,18 @@ const formatEndTime = (time) => {
 };
 
 export default function AuctionCard({ auction, onToggleWatch, isWatching = auction.isWatching }) {
+  const isSold = auction.status === 'sold';
   const remaining = new Date(auction.endTime).getTime() - Date.now();
   const countdown = !Number.isFinite(remaining) ? 'End time to be confirmed' : remaining <= 0 ? 'Ended' : remaining < 86400000 ? `${Math.floor(remaining / 3600000)}h left` : `${Math.floor(remaining / 86400000)}d left`;
   return (
-    <article className="auction-card">
+    <article className={`auction-card${isSold ? ' auction-card-sold' : ''}`}>
       <div className="relative">
       <Link to={`/auction/${auction._id}`} className="auction-card-link" aria-label={`View ${auction.title}`}>
         <div className="auction-card-art">
           <span className="category-ribbon">{auction.category}</span>
-          <span className={`status-pill status-${(auction.status || '').toLowerCase().replaceAll(' ', '-')}`}>{auction.status || 'active'}</span>
+          <span className={`status-pill status-${(auction.status || '').toLowerCase().replaceAll(' ', '-')}`}>{isSold ? 'SOLD' : auction.status || 'active'}</span>
           {auction.images?.[0]
-            ? <img src={imageUrl(auction.images[0])} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ? <img src={imageUrl(auction.images[0])} alt="" className={`absolute inset-0 h-full w-full object-cover${isSold ? ' grayscale opacity-70' : ''}`} />
             : <div className="auction-card-letter">{(auction.title || 'C').slice(0, 1).toUpperCase()}</div>}
           <span className="auction-card-number">CAMPUS FIND / {String(auction._id || '').slice(-4).toUpperCase()}</span>
         </div>
@@ -28,7 +29,7 @@ export default function AuctionCard({ auction, onToggleWatch, isWatching = aucti
             <div className="min-w-0"><h2 className="auction-card-title">{auction.title}</h2><p className="auction-card-description">{auction.description}</p></div>
             <span className="auction-card-open" aria-hidden="true"><ArrowUpRight size={17} /></span>
           </div>
-          <div className="auction-card-price"><div><span className="fact-label">CURRENT BID</span><strong>{formatPrice(auction.currentPrice || auction.startingPrice)}</strong></div><div className="text-right"><span className="fact-label">CONDITION</span><span className="font-semibold capitalize text-slate-700">{auction.condition || 'Good'}</span></div></div>
+          <div className="auction-card-price"><div><span className="fact-label">{isSold ? 'FINAL PRICE' : 'CURRENT BID'}</span><strong>{formatPrice(isSold ? auction.approvedFinalPrice || auction.currentPrice || auction.startingPrice : auction.currentPrice || auction.startingPrice)}</strong></div><div className="text-right"><span className="fact-label">CONDITION</span><span className="font-semibold capitalize text-slate-700">{auction.condition || 'Good'}</span></div></div>
           <div className="auction-card-meta"><span><Tag size={14} /> {auction.category}</span><span><UserRound size={14} /> {auction.seller?.name || 'Campus seller'}</span></div>
           <div className="auction-card-footer"><span><Clock3 size={14} /> {countdown} · {formatEndTime(auction.endTime)}</span><strong>{auction.bidCount || 0} bids</strong></div>
         </div>

@@ -133,7 +133,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .category-ribbon { position: relative; z-index: 2; border-radius: 4px; background: rgba(255,255,255,.88); padding: 6px 8px; color: #475b4d; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .status-pill { position: relative; z-index: 2; border: 1px solid rgba(56,83,60,.12); border-radius: 4px; background: #f7f8f2; padding: 5px 8px; color: #58695e; font-size: 9px; font-weight: 800; text-transform: capitalize; }
 .status-active { background: #e4f2e7; color: #1a7344; }
-.status-sold { background: #e5e8e5; color: #526057; }
+.status-sold { border-color: #783629; background: #8c3f31; color: #fff; font-size: 10px; font-weight: 900; letter-spacing: .08em; }
 .status-awaiting-seller-decision { background: #fbf0d9; color: #805d0b; }
 .status-reserved { background: #e9e6f4; color: #5b4b8b; }
 .auction-card-letter { position: absolute; z-index: 1; right: 28px; bottom: 2px; color: rgba(33, 86, 51, .25); font-size: 124px; font-weight: 900; letter-spacing: -.1em; line-height: .95; }

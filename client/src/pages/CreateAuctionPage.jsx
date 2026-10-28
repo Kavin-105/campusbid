@@ -10,11 +10,15 @@ const localInputTime = (date) => {
   const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return d.toISOString().slice(0, 16);
 };
-const initialValues = () => {
+const freshAuctionTimes = () => {
   const now = new Date();
-  const start = new Date(now.getTime() + 30 * 60000);
-  const end = new Date(now.getTime() + 7 * 86400000);
-  return { title: '', category: 'bicycles', description: '', condition: 'good', startingPrice: '', minimumBidIncrement: 25, startTime: localInputTime(start), endTime: localInputTime(end) };
+  return {
+    startTime: localInputTime(new Date(now.getTime() + 30 * 60000)),
+    endTime: localInputTime(new Date(now.getTime() + 7 * 86400000))
+  };
+};
+const initialValues = () => {
+  return { title: '', category: 'bicycles', description: '', condition: 'good', startingPrice: '', minimumBidIncrement: 25, ...freshAuctionTimes() };
 };
 export default function CreateAuctionPage() {
   const navigate = useNavigate(); const [searchParams] = useSearchParams();
@@ -37,7 +41,7 @@ export default function CreateAuctionPage() {
     api.get(`/auctions/${relistId}`).then(({ data }) => {
       if (!active) return;
       const source = data.auction;
-      setValues((current) => ({ ...current, title: source.title || '', category: source.category || current.category, description: source.description || '', condition: source.condition || current.condition, startingPrice: source.startingPrice || '', minimumBidIncrement: source.minimumBidIncrement || 25 }));
+      setValues((current) => ({ ...current, title: source.title || '', category: source.category || current.category, description: source.description || '', condition: source.condition || current.condition, startingPrice: source.startingPrice || '', minimumBidIncrement: source.minimumBidIncrement || 25, ...freshAuctionTimes() }));
       setRetainedImages((source.images || []).filter((url) => typeof url === 'string' && url.startsWith('/uploads/')));
     }).catch((e) => active && setError(e.response?.data?.message || 'Could not load the listing to relist.')).finally(() => active && setPrefillLoading(false));
     return () => { active = false; };
@@ -87,7 +91,7 @@ export default function CreateAuctionPage() {
 
   return <div className="mx-auto max-w-3xl"><div className="create-panel">
     <Link to="/seller/my-listings" className="back-link"><ArrowLeft size={16} /> Back to my listings</Link>
-    <p className="eyebrow mt-6 text-campus-700">{relistId ? 'GIVE IT ANOTHER CHAPTER' : 'GIVE IT ANOTHER CHAPTER'}</p>
+    <p className="eyebrow mt-6 text-campus-700">{relistId ? 'GIVE IT ANOTHER CHAPTER' : 'CAMPUS MARKETPLACE'}</p>
     <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{relistId ? 'Relist a campus item.' : 'List a campus item.'}</h1>
     <p className="mt-2 text-slate-600">Thoughtful details and clear photos help the right buyer find it.</p>
     {prefillLoading && <p role="status" className="mt-4 text-sm text-slate-600">Loading listing details…</p>}
