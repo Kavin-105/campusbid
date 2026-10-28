@@ -111,6 +111,10 @@ export default function AuctionPage() {
     ? Number(auction?.startingPrice || 0)
     : Number(auction?.currentPrice || 0) + Number(auction?.minimumBidIncrement || 1);
   const mayBid = isBuyer && auction?.status === 'active' && !ownAuction;
+  const mayManageAutoBid = isBuyer
+    && ['scheduled', 'active'].includes(auction?.status)
+    && !ownAuction
+    && new Date(auction.endTime) > new Date();
 
   const act = async (operation, successText) => {
     setWorking(true); setError(''); setMessage('');
@@ -126,10 +130,20 @@ export default function AuctionPage() {
   const toggleWatch = () => act(() => auction.isWatching ? api.delete(`/buyer/watchlist/${id}`) : api.post(`/buyer/watchlist/${id}`), auction.isWatching ? 'Removed from your watchlist.' : 'Added to your watchlist.');
   const submitAutoBid = (event) => {
     event.preventDefault();
-    if (Number(autoMax) < nextBid) { setError(`The maximum bid must be at least ${formatPrice(nextBid)}.`); return; }
+    if (Number(autoMax) < nextBid) {
+      setError(`The maximum bid must be at least ${formatPrice(nextBid)}.`);
+      return;
+    }
     setAutoBidBusy(true); setError(''); setMessage('');
     api.post(`/auctions/${id}/autobids`, { maximumAmount: Number(autoMax) })
-      .then(async () => { setAutoMax(''); setMessage('Automatic bidding is active. Your maximum stays private.'); await loadAuction(false); await loadBids(); })
+      .then(async () => {
+        setAutoMax('');
+        setMessage(auction.status === 'scheduled'
+          ? 'Your automatic bid limit is saved and will start when the auction opens. Your maximum stays private.'
+          : 'Automatic bidding is active. Your maximum stays private.');
+        await loadAuction(false);
+        await loadBids();
+      })
       .catch((e) => setError(e.response?.data?.message || 'Could not save automatic bidding.'))
       .finally(() => setAutoBidBusy(false));
   };
@@ -187,8 +201,9 @@ export default function AuctionPage() {
         </section>
       </div>
       <aside className="space-y-5">
-        {mayBid ? <><section className="bid-panel"><p className="eyebrow text-emerald-100">READY WHEN YOU ARE</p><h2 className="mt-2 text-2xl font-bold text-white">Make it yours.</h2><p className="mt-2 text-sm text-emerald-50/85">Next valid bid: {formatPrice(nextBid)} · {remainingText(auction.endTime)}</p><form onSubmit={placeBid} className="mt-6 space-y-3"><label className="form-label text-emerald-50" htmlFor="bid-amount">Your bid (INR)</label><input id="bid-amount" type="number" min={nextBid} step="1" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} className="form-input border-white/20 bg-white text-slate-900" required /><button className="hero-cta w-full" disabled={working || !bidAmount}>{working ? 'Sending bid…' : 'Place my bid'} {!working && <ArrowRight size={17} />}</button></form></section>
-          <section className="detail-panel p-5"><h2 className="font-bold text-slate-900">Automatic bidding</h2><p className="mt-1 text-sm text-slate-600">Let CampusBid place incremental bids up to the maximum you choose. This amount stays private.</p>{auction.autoBidActive && <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800" role="status">Automatic bidding is active for this auction.</p>}<form className="mt-4 space-y-3" onSubmit={submitAutoBid}><label className="form-label" htmlFor="auto-max">Your maximum (INR)</label><input id="auto-max" className="form-input" type="number" min={nextBid} step="1" value={autoMax} onChange={(e) => setAutoMax(e.target.value)} required /><button className="secondary-btn w-full" disabled={autoBidBusy}>{autoBidBusy ? 'Saving…' : auction.autoBidActive ? 'Update automatic bid' : 'Start automatic bid'}</button></form>{auction.autoBidActive && <button className="mt-3 w-full rounded-xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50" disabled={autoBidBusy} onClick={cancelAutoBid}>Stop automatic bidding</button>}</section></> : isSeller ? <section className="role-notice"><UserRound size={21} className="text-campus-700" /><div><h2 className="font-bold">{ownAuction ? 'Your listing' : 'Seller view'}</h2><p className="mt-1 text-sm text-slate-600">{ownAuction ? 'You can manage this auction from your seller desk.' : 'Seller accounts can ask questions but cannot place bids.'}</p></div></section> : <section className="role-notice"><p className="text-sm text-slate-600"><Link to="/login" className="font-semibold text-campus-700">Sign in</Link> to bid and save this listing.</p></section>}
+        {mayBid && <section className="bid-panel"><p className="eyebrow text-emerald-100">READY WHEN YOU ARE</p><h2 className="mt-2 text-2xl font-bold text-white">Make it yours.</h2><p className="mt-2 text-sm text-emerald-50/85">Next valid bid: {formatPrice(nextBid)} · {remainingText(auction.endTime)}</p><form onSubmit={placeBid} className="mt-6 space-y-3"><label className="form-label text-emerald-50" htmlFor="bid-amount">Your bid (INR)</label><input id="bid-amount" type="number" min={nextBid} step="1" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} className="form-input border-white/20 bg-white text-slate-900" required /><button className="hero-cta w-full" disabled={working || !bidAmount}>{working ? 'Sending bid…' : 'Place my bid'} {!working && <ArrowRight size={17} />}</button></form></section>}
+        {mayManageAutoBid && <section className="detail-panel p-5"><h2 className="font-bold text-slate-900">Automatic bidding</h2><p className="mt-1 text-sm text-slate-600">Let CampusBid place incremental bids up to the maximum you choose. This amount stays private.</p>{auction.status === 'scheduled' && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">Save your limit now. Automatic bidding will begin when the auction opens at {dateText(auction.startTime)}.</p>}{auction.autoBidActive && <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800" role="status">{auction.status === 'scheduled' ? 'Your automatic bid limit is saved and will start when the auction opens.' : 'Automatic bidding is active for this auction.'}</p>}<form className="mt-4 space-y-3" onSubmit={submitAutoBid}><label className="form-label" htmlFor="auto-max">Your maximum (INR)</label><input id="auto-max" className="form-input" type="number" min={nextBid} step="1" value={autoMax} onChange={(e) => setAutoMax(e.target.value)} required /><button className="secondary-btn w-full" disabled={autoBidBusy}>{autoBidBusy ? 'Saving…' : auction.autoBidActive ? 'Update automatic bid' : 'Start automatic bid'}</button></form>{auction.autoBidActive && <button className="mt-3 w-full rounded-xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50" disabled={autoBidBusy} onClick={cancelAutoBid}>Stop automatic bidding</button>}</section>}
+        {!mayBid && !mayManageAutoBid && (isSeller ? <section className="role-notice"><UserRound size={21} className="text-campus-700" /><div><h2 className="font-bold">{ownAuction ? 'Your listing' : 'Seller view'}</h2><p className="mt-1 text-sm text-slate-600">{ownAuction ? 'You can manage this auction from your seller desk.' : 'Seller accounts can ask questions but cannot place bids.'}</p></div></section> : <section className="role-notice"><p className="text-sm text-slate-600"><Link to="/login" className="font-semibold text-campus-700">Sign in</Link> to bid and save this listing.</p></section>)}
         <section className="detail-panel p-5"><p className="eyebrow text-campus-700">AUCTION TIMELINE</p><dl className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-3"><dt className="text-slate-500">Starts</dt><dd className="text-right font-medium">{dateText(auction.startTime)}</dd></div><div className="flex justify-between gap-3"><dt className="text-slate-500">Ends</dt><dd className="text-right font-medium">{dateText(auction.endTime)}</dd></div><div className="flex justify-between gap-3"><dt className="text-slate-500">Starting price</dt><dd className="font-medium">{formatPrice(auction.startingPrice)}</dd></div><div className="flex justify-between gap-3"><dt className="text-slate-500">Minimum increment</dt><dd className="font-medium">{formatPrice(auction.minimumBidIncrement)}</dd></div></dl></section>
       </aside>
     </div>

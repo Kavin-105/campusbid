@@ -3,7 +3,6 @@ const Bid = require('../models/Bid');
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const Notification = require('../models/Notification');
-const SavedSearch = require('../models/SavedSearch');
 const Handover = require('../models/Handover');
 const { placeBid } = require('../services/auctionService');
 
@@ -114,26 +113,6 @@ const createAuction = async (req, res, next) => {
       status: startDate > new Date() ? 'scheduled' : 'active',
       originalEndTime: endDate
     });
-
-    if (auction.status !== 'cancelled') {
-      const searches = await SavedSearch.find({ isActive: true });
-      for (const savedSearch of searches) {
-        if (savedSearch.category && savedSearch.category !== auction.category) continue;
-        if (savedSearch.minPrice !== undefined && auction.currentPrice < savedSearch.minPrice) continue;
-        if (savedSearch.maxPrice !== undefined && auction.currentPrice > savedSearch.maxPrice) continue;
-        if (savedSearch.query) {
-          const words = savedSearch.query.toLowerCase().split(/\s+/).filter(Boolean);
-          const searchable = `${auction.title} ${auction.description} ${auction.category}`.toLowerCase();
-          if (!words.every((word) => searchable.includes(word))) continue;
-        }
-        await Notification.create({
-          user: savedSearch.user,
-          auction: auction._id,
-          type: 'auction',
-          message: `New listing matches your saved search: ${auction.title}.`
-        });
-      }
-    }
 
     res.status(201).json({ auction });
   } catch (error) {

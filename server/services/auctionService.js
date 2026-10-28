@@ -198,7 +198,8 @@ const activateScheduledAuctions = async (io) => {
     );
     if (updated) {
       activated += 1;
-      broadcastAuction(io, updated);
+      const auctionWithAutomaticBids = await runAutomaticBids({ auction: updated, io });
+      broadcastAuction(io, auctionWithAutomaticBids);
     }
   }
   return activated;

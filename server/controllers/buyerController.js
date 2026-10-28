@@ -5,7 +5,6 @@ const Answer = require('../models/Answer');
 const Question = require('../models/Question');
 const Watchlist = require('../models/Watchlist');
 const Handover = require('../models/Handover');
-const SavedSearch = require('../models/SavedSearch');
 const { createNotification, runAutomaticBids } = require('../services/auctionService');
 
 const pagination = (query) => {
@@ -20,7 +19,7 @@ const validateMarketplaceQuery = (query, res) => {
     res.status(400).json({ message: 'Marketplace filter values must be single strings.' });
     return false;
   }
-  const allowedStatuses = ['scheduled', 'active', 'awaiting seller decision', 'reserved', 'sold', 'unsold', 'cancelled', 'failed pickup'];
+  const allowedStatuses = ['all', 'scheduled', 'active', 'awaiting seller decision', 'reserved', 'sold', 'unsold', 'cancelled', 'failed pickup'];
   const allowedCategories = ['all', 'bicycles', 'calculators', 'books', 'electronics', 'stationery', 'hostel essentials', 'other'];
   const allowedConditions = ['new', 'like new', 'good', 'fair', 'needs repair'];
   const allowedSorts = ['newest', 'endingSoon', 'lowestPrice', 'highestPrice'];
@@ -57,7 +56,9 @@ const buildAuctionFilter = (query) => {
   const filter = {};
   const now = new Date();
   const requestedStatus = query.status;
-  let statuses = requestedStatus ? [requestedStatus] : ['active', 'scheduled'];
+  let statuses = requestedStatus && requestedStatus !== 'all'
+    ? [requestedStatus]
+    : ['scheduled', 'active', 'awaiting seller decision', 'reserved', 'sold', 'unsold', 'cancelled', 'failed pickup'];
 
   if (query.category && query.category !== 'all') filter.category = query.category;
   if (query.condition) filter.condition = query.condition;
@@ -339,60 +340,18 @@ const getBuyerPurchases = async (req, res, next) => {
   }
 };
 
-const getSavedSearches = async (req, res, next) => {
-  try {
-    const items = await SavedSearch.find({ user: req.user._id }).sort({ createdAt: -1 });
-    res.json({ items });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const createSavedSearch = async (req, res, next) => {
-  try {
-    const query = String(req.body.query || '').trim();
-    const category = String(req.body.category || '').trim();
-    const minPrice = req.body.minPrice === '' || req.body.minPrice === undefined ? undefined : Number(req.body.minPrice);
-    const maxPrice = req.body.maxPrice === '' || req.body.maxPrice === undefined ? undefined : Number(req.body.maxPrice);
-    if (!query && !category && minPrice === undefined && maxPrice === undefined) {
-      return res.status(400).json({ message: 'Add a keyword, category, or price range to save this search.' });
-    }
-    if ((minPrice !== undefined && (!Number.isFinite(minPrice) || minPrice < 0))
-      || (maxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice < 0))
-      || (minPrice !== undefined && maxPrice !== undefined && maxPrice < minPrice)) {
-      return res.status(400).json({ message: 'Enter a valid saved-search price range.' });
-    }
-    const savedSearch = await SavedSearch.create({
-      user: req.user._id,
-      name: String(req.body.name || '').trim().slice(0, 80),
-      query,
-      category,
-      minPrice,
-      maxPrice
-    });
-    res.status(201).json({ savedSearch });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const deleteSavedSearch = async (req, res, next) => {
-  try {
-    const result = await SavedSearch.deleteOne({ _id: req.params.id, user: req.user._id });
-    if (!result.deletedCount) return res.status(404).json({ message: 'Saved search not found' });
-    res.json({ message: 'Saved search removed' });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const setAutoBid = async (req, res, next) => {
   try {
     const auction = await Auction.findById(req.params.id);
     if (!auction) return res.status(404).json({ message: 'Auction not found' });
     if (String(auction.seller) === String(req.user._id)) return res.status(403).json({ message: 'You cannot bid on your own listing' });
-    if (auction.status !== 'active' || auction.endTime <= new Date() || auction.startTime > new Date()) {
-      return res.status(409).json({ message: 'Automatic bidding is only available for active auctions.' });
+    const now = new Date();
+    const isScheduled = auction.status === 'scheduled' && auction.endTime > now;
+    const isActive = auction.status === 'active'
+      && auction.startTime <= now
+      && auction.endTime > now;
+    if (!isScheduled && !isActive) {
+      return res.status(409).json({ message: 'Automatic bidding is available for scheduled or active auctions.' });
     }
     const maximumAmount = Number(req.body.maximumAmount);
     const minimumAmount = auction.bidCount === 0 ? auction.startingPrice : auction.currentPrice + auction.minimumBidIncrement;
@@ -404,13 +363,16 @@ const setAutoBid = async (req, res, next) => {
       { $set: { maximumAmount, isActive: true } },
       { new: true, upsert: true, runValidators: true }
     );
-    const updatedAuction = await runAutomaticBids({
-      auction: await Auction.findById(auction._id),
-      io: req.app.locals.io
-    });
+    const updatedAuction = isActive
+      ? await runAutomaticBids({
+        auction: await Auction.findById(auction._id),
+        io: req.app.locals.io
+      })
+      : auction;
     res.status(201).json({
       rule: { _id: rule._id, auction: rule.auction, maximumAmount: rule.maximumAmount, isActive: rule.isActive },
-      currentPrice: updatedAuction.currentPrice
+      currentPrice: updatedAuction.currentPrice,
+      startsAt: isScheduled ? auction.startTime : null
     });
   } catch (error) {
     next(error);
@@ -439,11 +401,8 @@ module.exports = {
   getBuyerDashboard,
   getBuyerPurchases,
   getMarketplace,
-  getSavedSearches,
   getWatchlist,
   removeWatchlistItem,
-  createSavedSearch,
-  deleteSavedSearch,
   setAutoBid,
   cancelAutoBid
 };

@@ -16,11 +16,8 @@ const {
   getBuyerDashboard,
   getBuyerPurchases,
   getMarketplace,
-  getSavedSearches,
   getWatchlist,
   removeWatchlistItem,
-  createSavedSearch,
-  deleteSavedSearch,
   setAutoBid
 } = require('../controllers/buyerController');
 const {
@@ -79,10 +76,6 @@ router.get('/buyer/watchlist', ...buyer, getWatchlist);
 router.post('/buyer/watchlist/:auctionId', ...buyer, addWatchlistItem);
 router.delete('/buyer/watchlist/:auctionId', ...buyer, removeWatchlistItem);
 router.get('/buyer/purchases', ...buyer, getBuyerPurchases);
-router.get('/buyer/saved-searches', ...buyer, getSavedSearches);
-router.post('/buyer/saved-searches', ...buyer, createSavedSearch);
-router.delete('/buyer/saved-searches/:id', ...buyer, deleteSavedSearch);
-
 router.get('/notifications', ...campusUser, getNotifications);
 router.patch('/notifications/:id/read', ...campusUser, markNotificationRead);
 router.post('/notifications/read-all', ...campusUser, markAllNotificationsRead);

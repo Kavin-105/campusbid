@@ -33,7 +33,7 @@ export default function AuctionCard({ auction, onToggleWatch, isWatching = aucti
           <div className="auction-card-footer"><span><Clock3 size={14} /> {countdown} · {formatEndTime(auction.endTime)}</span><strong>{auction.bidCount || 0} bids</strong></div>
         </div>
       </Link>
-      {onToggleWatch && <button type="button" className="absolute right-3 top-3 z-10 rounded-full border border-white/70 bg-white/95 p-2 text-campus-800 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-campus-600" aria-label={isWatching ? 'Remove from watchlist' : 'Add to watchlist'} aria-pressed={Boolean(isWatching)} onClick={() => onToggleWatch(auction)}><Heart size={17} fill={isWatching ? 'currentColor' : 'none'} /></button>}
+      {onToggleWatch && <button type="button" className="absolute right-3 top-[120px] z-10 rounded-full border border-white/70 bg-white/95 p-2 text-campus-800 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-campus-600" aria-label={isWatching ? 'Remove from watchlist' : 'Add to watchlist'} aria-pressed={Boolean(isWatching)} onClick={() => onToggleWatch(auction)}><Heart size={17} fill={isWatching ? 'currentColor' : 'none'} /></button>}
       </div>
     </article>
   );
