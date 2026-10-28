@@ -180,6 +180,9 @@ const addQuestion = async (req, res, next) => {
     const questionText = String(req.body.question || '').trim();
     const auction = await Auction.findById(req.params.id);
     if (!auction) return res.status(404).json({ message: 'Auction not found' });
+    if (['reserved', 'sold'].includes(auction.status)) {
+      return res.status(409).json({ message: 'Chat is closed for reserved or sold listings.' });
+    }
     if (!questionText) return res.status(400).json({ message: 'Question is required' });
 
     const questionDoc = await Question.create({ auction: auction._id, askedBy: req.user._id, question: questionText });
@@ -203,6 +206,9 @@ const answerQuestion = async (req, res, next) => {
 
     const auction = await Auction.findById(question.auction);
     if (auction.seller.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Only the seller can answer questions' });
+    if (['reserved', 'sold'].includes(auction.status)) {
+      return res.status(409).json({ message: 'Chat is closed for reserved or sold listings.' });
+    }
 
     const answerText = String(answer || '').trim();
     if (!answerText) return res.status(400).json({ message: 'Answer is required' });
