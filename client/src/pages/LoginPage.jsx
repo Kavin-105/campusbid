@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [values, setValues] = useState({ email: '', password: '', role: 'buyer' });
+  const [values, setValues] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -30,13 +30,6 @@ export default function LoginPage() {
       <div className="auth-panel">
         <div className="auth-intro"><p className="eyebrow text-campus-700">GOOD TO SEE YOU AGAIN</p><h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Welcome back.</h1><p className="mt-3 text-slate-600">Sign in to pick up where you left off.</p></div>
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div>
-            <label className="form-label" htmlFor="login-role">Sign in as</label>
-            <select id="login-role" className="form-input" value={values.role} onChange={(e) => setValues({ ...values, role: e.target.value })}>
-              <option value="buyer">Buyer</option>
-              <option value="seller">Seller</option>
-            </select>
-          </div>
           <div>
             <label className="form-label" htmlFor="login-email">Email address</label>
             <input id="login-email" autoComplete="email" value={values.email} onChange={(e) => setValues({ ...values, email: e.target.value })} className="form-input" type="email" required />

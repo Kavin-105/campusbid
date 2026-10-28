@@ -36,8 +36,8 @@ export function AuthProvider({ children }) {
     return () => { active = false; };
   }, [token]);
 
-  const login = async ({ email, password, role }) => {
-    const response = await api.post('/auth/login', { email, password, role });
+  const login = async ({ email, password }) => {
+    const response = await api.post('/auth/login', { email, password });
     const { user: nextUser, token: nextToken } = response.data;
     localStorage.setItem('campusbid-token', nextToken);
     api.defaults.headers.common.Authorization = `Bearer ${nextToken}`;
