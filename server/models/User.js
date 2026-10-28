@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: [/^.+@.+\..+$/, 'Please provide a valid email address'] },
+  email: { type: String, required: true, lowercase: true, trim: true, match: [/^.+@.+\..+$/, 'Please provide a valid email address'] },
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['buyer', 'seller'], default: 'buyer', required: true },
   studentId: { type: String, default: '' },
@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   notificationPreferences: { email: { type: Boolean, default: true }, browser: { type: Boolean, default: true } }
 }, { timestamps: true });
+
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 
 userSchema.methods.comparePassword = function comparePassword(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.passwordHash);

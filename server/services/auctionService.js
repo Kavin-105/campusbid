@@ -47,9 +47,9 @@ const acceptBid = async ({ auction, bidder, amount, bidType = 'manual', autoBidR
     bidType,
     autoBidRule
   });
-  const extendAuction = auction.endTime.getTime() - now.getTime() <= 2 * 60 * 1000;
+  const extendAuction = auction.endTime.getTime() - now.getTime() <= 30 * 1000;
   const nextEndTime = extendAuction
-    ? new Date(auction.endTime.getTime() + 2 * 60 * 1000)
+    ? new Date(now.getTime() + 60 * 1000)
     : auction.endTime;
 
   let updated;
@@ -96,9 +96,9 @@ const acceptBid = async ({ auction, bidder, amount, bidType = 'manual', autoBidR
     ]);
     const recipients = new Set([...bidders, ...watchers].map(String));
     for (const recipient of recipients) {
-      await createNotification(recipient, auction._id, 'auction', `A late bid extended ${auction.title} by 2 minutes.`);
+      await createNotification(recipient, auction._id, 'auction', `A late bid extended ${auction.title}; the auction now closes in 60 seconds.`);
     }
-    await createNotification(auction.seller, auction._id, 'auction', `A late bid extended ${auction.title} by 2 minutes.`);
+    await createNotification(auction.seller, auction._id, 'auction', `A late bid extended ${auction.title}; the auction now closes in 60 seconds.`);
   }
 
   if (io) {

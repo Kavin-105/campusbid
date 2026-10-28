@@ -168,7 +168,7 @@ const getAuctionDetails = async (req, res, next) => {
       .populate('provisionalWinner', 'name college avatar');
     if (!auction) return res.status(404).json({ message: 'Auction not found' });
 
-    const [bids, questions, watching, handover, activeAutoBid] = await Promise.all([
+    const [bids, questions, watching, handover, buyerAutoBid] = await Promise.all([
       Bid.find({ auction: auction._id }).populate('bidder', 'name college avatar').sort({ createdAt: -1 }),
       Question.find({ auction: auction._id }).populate('askedBy', 'name').sort({ createdAt: -1 }),
       Watchlist.exists({ user: req.user._id, auction: auction._id }),
@@ -176,8 +176,8 @@ const getAuctionDetails = async (req, res, next) => {
         ? Handover.findOne({ auction: auction._id }).populate('buyer', 'name college')
         : Promise.resolve(null),
       req.user.role === 'buyer'
-        ? AutoBidRule.exists({ auction: auction._id, bidder: req.user._id, isActive: true })
-        : Promise.resolve(false)
+        ? AutoBidRule.findOne({ auction: auction._id, bidder: req.user._id }).select('maximumAmount isActive')
+        : Promise.resolve(null)
     ]);
     const answers = await Answer.find({ question: { $in: questions.map((item) => item._id) } })
       .populate('answeredBy', 'name')
@@ -193,7 +193,8 @@ const getAuctionDetails = async (req, res, next) => {
         ...auction.toObject(),
         isWatching: Boolean(watching),
         handover,
-        autoBidActive: Boolean(activeAutoBid)
+        autoBidActive: Boolean(buyerAutoBid?.isActive),
+        autoBidMaximumAmount: buyerAutoBid?.maximumAmount ?? null
       },
       bids,
       recentBids: bids,

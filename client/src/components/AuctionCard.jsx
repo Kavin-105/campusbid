@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Clock3, Tag, UserRound, Heart } from 'lucide-react';
-import { formatPrice } from '../utils/format';
+import { formatPrice, formatTimeRemaining } from '../utils/format';
 import { imageUrl } from '../utils/imageUrl';
 
 const formatEndTime = (time) => {
@@ -9,9 +10,13 @@ const formatEndTime = (time) => {
 };
 
 export default function AuctionCard({ auction, onToggleWatch, isWatching = auction.isWatching }) {
+  const [now, setNow] = useState(Date.now());
   const isSold = auction.status === 'sold';
-  const remaining = new Date(auction.endTime).getTime() - Date.now();
-  const countdown = !Number.isFinite(remaining) ? 'End time to be confirmed' : remaining <= 0 ? 'Ended' : remaining < 86400000 ? `${Math.floor(remaining / 3600000)}h left` : `${Math.floor(remaining / 86400000)}d left`;
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const countdown = formatTimeRemaining(auction.endTime, now);
   return (
     <article className={`auction-card${isSold ? ' auction-card-sold' : ''}`}>
       <div className="relative">
@@ -31,7 +36,7 @@ export default function AuctionCard({ auction, onToggleWatch, isWatching = aucti
           </div>
           <div className="auction-card-price"><div><span className="fact-label">{isSold ? 'FINAL PRICE' : 'CURRENT BID'}</span><strong>{formatPrice(isSold ? auction.approvedFinalPrice || auction.currentPrice || auction.startingPrice : auction.currentPrice || auction.startingPrice)}</strong></div><div className="text-right"><span className="fact-label">CONDITION</span><span className="font-semibold capitalize text-slate-700">{auction.condition || 'Good'}</span></div></div>
           <div className="auction-card-meta"><span><Tag size={14} /> {auction.category}</span><span><UserRound size={14} /> {auction.seller?.name || 'Campus seller'}</span></div>
-          <div className="auction-card-footer"><span><Clock3 size={14} /> {countdown} · {formatEndTime(auction.endTime)}</span><strong>{auction.bidCount || 0} bids</strong></div>
+          <div className="auction-card-footer"><span><Clock3 size={14} /> {countdown}{countdown === 'Auction ended' || countdown === 'Time unavailable' ? '' : ' left'} · {formatEndTime(auction.endTime)}</span><strong>{auction.bidCount || 0} bids</strong></div>
         </div>
       </Link>
       {onToggleWatch && <button type="button" className="absolute right-3 top-[120px] z-10 rounded-full border border-white/70 bg-white/95 p-2 text-campus-800 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-campus-600" aria-label={isWatching ? 'Remove from watchlist' : 'Add to watchlist'} aria-pressed={Boolean(isWatching)} onClick={() => onToggleWatch(auction)}><Heart size={17} fill={isWatching ? 'currentColor' : 'none'} /></button>}
